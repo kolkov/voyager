@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/kolkov/voyager/proto/payment/v1;paymentv1";
+
+service PaymentService {
+  rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse) {}
+}
+
+message ProcessPaymentRequest {
+  string order_id = 1;
+  float amount = 2;
+  string currency = 3;
+}
+
+message ProcessPaymentResponse {
+  bool success = 1;
+  string transaction_id = 2;
+  string error_message = 3;
+}

@@ -1,0 +1,16 @@
+# Voyager Discovery Server Configuration
+etcd_endpoints:
+  - "${ETCD_ENDPOINT_1}"
+  - "${ETCD_ENDPOINT_2}"
+  - "${ETCD_ENDPOINT_3}"
+
+cache_ttl: 30s
+auth_token: "${AUTH_TOKEN}"
+
+grpc_addr: ":50050"
+metrics_addr: ":2112"
+log_interval: 30s
+
+# Optional parameters
+debug: ${DEBUG:-false}
+log_format: "${LOG_FORMAT:-json}"

@@ -1,0 +1,16 @@
+# Example configuration for Voyager Discovery Server
+etcd_endpoints:
+  - "http://etcd1:2379"
+  - "http://etcd2:2379"
+  - "http://etcd3:2379"
+
+cache_ttl: 30s
+auth_token: "secure-token-here"  # Use secret from environment variables in production
+
+grpc_addr: ":50050"
+metrics_addr: ":2112"
+log_interval: 30s
+
+# Optional parameters
+debug: false
+log_format: "json"

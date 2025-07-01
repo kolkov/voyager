@@ -1,0 +1,14 @@
+# deployments/kubernetes/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voyager-config
+  namespace: voyager-system
+data:
+  voyagerd.yaml: |
+    etcd_endpoints:
+      - "etcd-cluster-client:2379"
+    cache_ttl: 30s
+    grpc_addr: ":50050"
+    metrics_addr: ":2112"
+    log_interval: 30s

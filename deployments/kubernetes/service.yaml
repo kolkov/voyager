@@ -1,0 +1,16 @@
+# deployments/kubernetes/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: voyager-discovery
+  namespace: voyager-system
+spec:
+  selector:
+    app: voyager-discovery
+  ports:
+    - name: grpc
+      port: 50050
+      targetPort: 50050
+    - name: metrics
+      port: 2112
+      targetPort: 2112

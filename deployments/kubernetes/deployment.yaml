@@ -1,0 +1,63 @@
+# deployments/kubernetes/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voyager-discovery
+  namespace: voyager-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: voyager-discovery
+  template:
+    metadata:
+      labels:
+        app: voyager-discovery
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2112"
+    spec:
+      containers:
+        - name: discovery
+          image: registry.example.com/voyagerd:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50050
+              name: grpc
+            - containerPort: 2112
+              name: metrics
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/voyager
+          env:
+            - name: VOYAGER_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: voyager-secrets
+                  key: auth-token
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: config-volume
+          configMap:
+            name: voyager-config
+            items:
+              - key: voyagerd.yaml
+                path: voyagerd.yaml

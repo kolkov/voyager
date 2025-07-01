@@ -1,0 +1,51 @@
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24.x
+
+      - name: Install protoc
+        run: |
+          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v22.3/protoc-22.3-linux-x86_64.zip
+          sudo unzip -o protoc-*.zip -d /usr/local
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
+
+      - name: Generate code
+        run: make generate
+
+      - name: Prepare dependencies
+        run: |
+          cp go.mod go.mod.orig
+          echo "replace github.com/kolkov/voyager => ./" >> go.mod
+          go mod tidy
+          mv go.mod.orig go.mod
+          go mod tidy
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v1'
+          args: release --clean --timeout 30m
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

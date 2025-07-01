@@ -1,0 +1,72 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  skip-dirs:
+    - .git
+    - vendor
+    - proto
+  concurrency: 4
+
+linters:
+  enable-all: true
+  disable:
+    - wsl
+    - gochecknoglobals
+    - gochecknoinits
+    - lll
+    - funlen
+    - gocognit
+    - gocyclo
+    - exhaustivestruct
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/kolkov/voyager
+
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/kolkov/voyager)
+    skip-generated: true
+
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - hugeParam
+
+  govet:
+    check-shadowing: true
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  staticcheck:
+    checks: ["all"]
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - gocognit
+        - funlen
+        - dupl
+        - gosec
+
+    - path: proto/.*\.pb\.go
+      linters:
+        - dupl
+        - gocyclo
+        - gocognit
+        - funlen
+        - gosec
+        - revive
+        - staticcheck
+
+  max-per-linter: 0
+  max-same-issues: 0
