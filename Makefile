@@ -1,5 +1,5 @@
 # VoyagerSD - Service Discovery for Go Microservices
-# Makefile for building, testing and deployment
+# Cross-platform Makefile for PowerShell 7.5+ and bash
 
 GO := go
 GOOS ?= $(shell $(GO) env GOOS)
@@ -10,31 +10,30 @@ PROTO_OUT := proto
 DOCKER_TAG ?= latest
 VERSION ?= $(shell git describe --tags --always)
 
-# Cross-platform proto file discovery
+# Manually list proto files for cross-platform compatibility
+PROTO_FILES := \
+    proto/voyager/v1/voyager.proto \
+    proto/order/v1/order.proto \
+    proto/payment/v1/payment.proto
+
+# Cross-platform commands
 ifeq ($(OS),Windows_NT)
-    PROTO_FILES := $(shell powershell -Command "Get-ChildItem -Recurse -Path $(PROTO_DIR) -Filter *.proto | Resolve-Path -Relative")
+    RM_CMD := del /f /q /s
+    RMDIR_CMD := rmdir /s /q
+    MKDIR_CMD := mkdir
     NULL_DEVICE := NUL
+    SHELL := cmd
+    .SHELLFLAGS := /c
+    EXT := .exe
 else
-    PROTO_FILES := $(shell find $(PROTO_DIR) -name '*.proto')
+    RM_CMD := rm -f
+    RMDIR_CMD := rm -rf
+    MKDIR_CMD := mkdir -p
     NULL_DEVICE := /dev/null
+    EXT :=
 endif
 
 SERVICES := order-service payment-service discovery-server
-
-# File extension handling
-ifeq ($(GOOS),windows)
-    EXT := .exe
-    SHELL := powershell.exe
-    .SHELLFLAGS := -NoProfile -Command
-    RM_CMD := Remove-Item -ErrorAction Ignore -Recurse -Force
-    MKDIR_CMD := New-Item -ItemType Directory -Force -Path
-    CHECK_CMD := (Test-Path -Path
-else
-    EXT :=
-    RM_CMD := rm -rf
-    MKDIR_CMD := mkdir -p
-    CHECK_CMD := test -f
-endif
 
 .PHONY: all generate test test-all test-integration build docker clean run-examples lint cover check-generated verify-generated
 
@@ -43,12 +42,12 @@ all: lint test-all build
 ## generate: Generate code from .proto files
 generate:
 	@echo "Generating gRPC code..."
-	@$(MKDIR_CMD) $(PROTO_OUT)
-	@$(foreach proto,$(PROTO_FILES), \
+	@$(MKDIR_CMD) "$(PROTO_OUT)"
+	@for proto in $(PROTO_FILES); do \
 		protoc --go_out=. --go_opt=module=github.com/kolkov/voyager \
 			--go-grpc_out=. --go-grpc_opt=module=github.com/kolkov/voyager \
-			-I$(PROTO_DIR) $(proto); \
-	)
+			-I"$(PROTO_DIR)" "$$proto"; \
+	done
 	@echo "Code generation complete"
 
 ## check-generated: Verify generated code is up-to-date
@@ -60,18 +59,17 @@ check-generated:
 
 ## verify-generated: Check if files were generated
 verify-generated:
-ifeq ($(GOOS),windows)
-	@echo "Verifying generated files for Windows..."
-	@powershell -Command " \
-		if (-not (Test-Path 'proto/voyager/v1/voyager.pb.go')) { exit 1 }; \
-		if (-not (Test-Path 'proto/order/v1/order_grpc.pb.go')) { exit 1 }; \
-		if (-not (Test-Path 'proto/payment/v1/payment.pb.go')) { exit 1 }"
-else
-	@echo "Verifying generated files for Unix..."
-	@test -f "proto/voyager/v1/voyager.pb.go" && \
-	test -f "proto/order/v1/order_grpc.pb.go" && \
-	test -f "proto/payment/v1/payment.pb.go"
-endif
+	@echo "Verifying generated files..."
+	@for file in \
+		proto/voyager/v1/voyager.pb.go \
+		proto/order/v1/order_grpc.pb.go \
+		proto/payment/v1/payment.pb.go; \
+	do \
+		if [ ! -f "$$file" ]; then \
+			echo "Error: Generated file $$file is missing"; \
+			exit 1; \
+		fi; \
+	done
 	@echo "All generated files present"
 
 ## test: Run unit tests with coverage
@@ -102,16 +100,16 @@ build: build-voyagerd build-examples
 ## build-voyagerd: Build the voyagerd server
 build-voyagerd: generate
 	@echo "Building voyagerd for $(GOOS)/$(GOARCH)..."
-	@$(MKDIR_CMD) $(BIN_DIR)
-	@$(GO) build -ldflags="-X main.version=$(VERSION)" -o $(BIN_DIR)/voyagerd$(EXT) ./cmd/voyagerd
+	@$(MKDIR_CMD) "$(BIN_DIR)"
+	@$(GO) build -ldflags="-X main.version=$(VERSION)" -o "$(BIN_DIR)/voyagerd$(EXT)" ./cmd/voyagerd
 	@echo "voyagerd build complete"
 
 ## build-examples: Build example services
 build-examples: generate
-	@$(MKDIR_CMD) $(BIN_DIR)
+	@$(MKDIR_CMD) "$(BIN_DIR)"
 	@for service in $(SERVICES); do \
 		echo "Building $$service for $(GOOS)/$(GOARCH)..."; \
-		$(GO) build -o $(BIN_DIR)/$$service$(EXT) ./examples/$$service; \
+		$(GO) build -o "$(BIN_DIR)/$$service$(EXT)" "./examples/$$service"; \
 	done
 	@echo "Example services build complete"
 
@@ -141,37 +139,39 @@ docker-examples:
 	@echo "Building Docker images for example services..."
 	@for service in $(SERVICES); do \
 		echo "Building $$service..."; \
-		docker build -f examples/$$service/Dockerfile \
-			-t voyager-example-$$service:$(DOCKER_TAG) .; \
+		docker build -f "examples/$$service/Dockerfile" \
+			-t "voyager-example-$$service:$(DOCKER_TAG)" .; \
 	done
 
 ## clean: Remove generated files and binaries
 clean:
 	@echo "Cleaning up..."
-	@$(RM_CMD) $(BIN_DIR)
-	@$(RM_CMD) coverage.out
-	@$(RM_CMD) coverage.txt
-	@$(RM_CMD) coverage-unit.txt
-	@$(RM_CMD) coverage-integration.txt
-	@$(RM_CMD) .goreleaser.yaml
+ifeq ($(OS),Windows_NT)
+	@if exist "$(BIN_DIR)" $(RMDIR_CMD) "$(BIN_DIR)"
+	@$(RM_CMD) coverage.out coverage.txt coverage-unit.txt coverage-integration.txt .goreleaser.yaml
+	@for /r . %%f in (*.pb.go) do @del /q "%%f" >nul 2>&1
+else
+	@$(RMDIR_CMD) "$(BIN_DIR)"
+	@$(RM_CMD) coverage.out coverage.txt coverage-unit.txt coverage-integration.txt .goreleaser.yaml
 	@find . -name '*.pb.go' -delete
+endif
 	@echo "Clean complete"
 
 ## run-full: Run voyagerd and example services together
 run-full: build
 	@echo "Starting Voyager Discovery Server..."
-	@$(BIN_DIR)/voyagerd$(EXT) &
-	@sleep 2
+	@"$(BIN_DIR)/voyagerd$(EXT)" &
+	@timeout 2 >$(NULL_DEVICE) || sleep 2
 	@echo "Starting example services..."
-	@VOYAGER_ADDR=localhost:50050 $(BIN_DIR)/order-service$(EXT) &
-	@VOYAGER_ADDR=localhost:50050 $(BIN_DIR)/payment-service$(EXT) &
+	@VOYAGER_ADDR=localhost:50050 "$(BIN_DIR)/order-service$(EXT)" &
+	@VOYAGER_ADDR=localhost:50050 "$(BIN_DIR)/payment-service$(EXT)" &
 	@echo "All services running. Press Ctrl+C to stop."
 
 ## run-examples-windows: Run examples in PowerShell (Windows only)
 run-examples-windows: build-examples
 	@echo "Starting example services in separate PowerShell windows..."
-	@start powershell -NoExit -Command "$$env:VOYAGER_ADDR='localhost:50050'; .\bin\order-service.exe"
-	@start powershell -NoExit -Command "$$env:VOYAGER_ADDR='localhost:50050'; .\bin\payment-service.exe"
+	@start pwsh -NoExit -Command "$$env:VOYAGER_ADDR='localhost:50050'; .\bin\order-service.exe"
+	@start pwsh -NoExit -Command "$$env:VOYAGER_ADDR='localhost:50050'; .\bin\payment-service.exe"
 	@echo "Services started in separate windows"
 
 ## deploy-kubernetes: Deploy to Kubernetes cluster
@@ -183,12 +183,12 @@ deploy-kubernetes:
 ## run-docker-stack: Run full docker stack with examples
 run-docker-stack:
 	@echo "Starting Voyager Docker stack..."
-	@docker-compose -f examples/docker-compose.yaml up -d
-	@echo "Stack started. Use 'docker-compose -f examples/docker-compose.yaml down' to stop."
+	@docker compose -f examples/docker-compose.yaml up -d
+	@echo "Stack started. Use 'docker compose -f examples/docker-compose.yaml down' to stop."
 
 ## help: Show available commands
 help:
 	@echo "VoyagerSD - Service Discovery System"
 	@echo "Available commands:"
 	@echo
-	@sed -n 's/^## //p' Makefile | column -t -s ':'
+	@sed -n 's/^## //p' $(MAKEFILE_LIST) | column -t -s ':'

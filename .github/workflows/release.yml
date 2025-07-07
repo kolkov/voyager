@@ -3,41 +3,35 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger workflow on semantic version tags (v1.0.0, v2.3.4, etc.)
+      - 'v*.*.*'
 
 permissions:
-  contents: write    # Required to create GitHub releases
-  packages: write    # Required if publishing Docker images
-  id-token: write    # Required for OIDC authentication
-  attestations: write # Required for software attestations
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      GO111MODULE: on   # Enable Go modules
-      CGO_ENABLED: 1    # Enable CGO for potential C dependencies
+      GO111MODULE: on
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/kolkov/voyager
 
     steps:
-      # Step 1: Checkout repository with full history
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for GoReleaser to generate proper changelog
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      # Step 2: Set up Go environment with caching
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24.4'  # Pinned Go version
+          go-version: '1.24.4'
           cache: true
-          cache-dependency-path: |
-            **/go.sum
-            .github/workflows/release.yml
 
-      # Step 3: Cache Go modules for faster builds
-      - name: Cache Go modules
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -47,54 +41,29 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      # Step 4: Install protocol buffer compiler and Go plugins
-      - name: Install protobuf tools
+      - name: Install protoc
+        uses: arduino/setup-protoc@v2
+        with:
+          version: '22.3'
+
+      - name: Install protoc plugins
         run: |
-          PROTOC_VERSION=22.3  # Pinned protobuf version
-          # Download and install protoc
-          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip"
-          sudo unzip -o protoc-$PROTOC_VERSION-linux-x86_64.zip -d /usr/local
-          rm protoc-$PROTOC_VERSION-linux-x86_64.zip
-          
-          # Install Go protobuf code generators
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 
-      # Step 5: Generate gRPC/protobuf code from .proto files
-      - name: Generate protobuf code
-        run: make generate  # Uses Makefile target to generate .pb.go files
-
-      # Step 6: Handle module dependencies with temporary replacement
-      - name: Prepare dependencies (with temporary replace)
+      - name: Generate and verify code
         run: |
-          # Preserve original go.mod
-          cp go.mod go.mod.orig
-          
-          # Add temporary replace directive to resolve local dependencies
-          echo "replace github.com/kolkov/voyager => ./" >> go.mod
-          
-          # Update dependencies with temporary replacement
-          go mod tidy
-          
-          # Restore original go.mod to prevent dirty Git state
-          mv go.mod.orig go.mod
-          
-          # Final dependency resolution without replacement
-          go mod tidy
+          make generate
+          make verify-generated
 
-      # Step 7: Execute GoReleaser to build and publish artifacts
+      - name: Configure Git for private modules
+        run: |
+          git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf "https://github.com"
+          go env -w GOPRIVATE=github.com/kolkov/voyager
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser  # Use OSS version
-          version: '~> v1'           # Pinned stable v1.x version
-          args: release --clean --timeout 30m  # Clean dist folder, 30m timeout
+          args: release --clean --timeout 30m
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Auth for GitHub release
-
-      # Step 8: Post-release verification (optional)
-      - name: Verify Docker images
-        if: success()  # Only run if previous steps succeeded
-        run: |
-          # Check if Docker images were created (adjust for your registry)
-          docker pull ghcr.io/kolkov/voyagerd:${{ github.ref_name }} || echo "Image not found"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
