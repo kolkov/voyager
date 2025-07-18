@@ -1,3 +1,4 @@
+// Package main implements a sample order service
 package main
 
 import (
@@ -11,8 +12,8 @@ import (
 	"time"
 
 	"github.com/kolkov/voyager/client"
-	orderv1 "github.com/kolkov/voyager/proto/order/v1"
-	paymentv1 "github.com/kolkov/voyager/proto/payment/v1"
+	orderv1 "github.com/kolkov/voyager/gen/proto/order/v1"
+	paymentv1 "github.com/kolkov/voyager/gen/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -37,13 +38,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create Voyager client: %v", err)
 	}
-	defer voyager.Close()
+	defer func() {
+		if closeErr := voyager.Close(); closeErr != nil {
+			log.Printf("failed to close voyager client: %v", closeErr)
+		}
+	}()
 
 	// Get dynamic port
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
+
 	port := listener.Addr().(*net.TCPAddr).Port
 
 	// Register service
@@ -57,10 +63,10 @@ func main() {
 
 	// Create gRPC server
 	server := grpc.NewServer()
-	orderServer := &orderServer{
+	srv := &orderServer{
 		voyager: voyager,
 	}
-	orderv1.RegisterOrderServiceServer(server, orderServer)
+	orderv1.RegisterOrderServiceServer(server, srv)
 
 	reflection.Register(server)
 
@@ -68,8 +74,8 @@ func main() {
 	go handleShutdown(voyager, server)
 
 	log.Printf("Order service started on port %d", port)
-	if err := server.Serve(listener); err != nil {
-		log.Fatalf("gRPC server failed: %v", err)
+	if servErr := server.Serve(listener); servErr != nil {
+		log.Fatalf("gRPC server failed: %v", servErr)
 	}
 }
 
@@ -93,7 +99,11 @@ func (s *orderServer) CreateOrder(ctx context.Context, req *orderv1.CreateOrderR
 		log.Printf("Failed to discover payment service: %v", err)
 		return nil, status.Errorf(codes.Unavailable, "payment service unavailable")
 	}
-	defer paymentConn.Close()
+	defer func() {
+		if conErr := paymentConn.Close(); conErr != nil {
+			log.Printf("failed to close payment connection: %v", conErr)
+		}
+	}()
 
 	// Create payment client
 	paymentClient := paymentv1.NewPaymentServiceClient(paymentConn)

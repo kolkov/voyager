@@ -7,8 +7,11 @@
 [![Beta Release](https://img.shields.io/badge/release-beta-blue)](https://github.com/kolkov/voyager/releases/tag/v1.0.0-beta)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kolkov/voyager)](https://goreportcard.com/report/github.com/kolkov/voyager)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/kolkov/voyager/blob/main/LICENSE)
+[![Multi-Platform](https://img.shields.io/badge/platform-windows%20|%20linux%20|%20macos-lightgrey)](https://github.com/kolkov/voyager)
 
-VoyagerSD is a production-ready service discovery solution for Go microservices with:
+> **Beta Notice**: VoyagerSD 1.0.0-beta is our current pre-release version. We're actively testing and refining before the stable release.
+
+VoyagerSD is a service discovery solution for Go microservices with:
 
 - Dynamic service registration
 - Health checking
@@ -17,8 +20,10 @@ VoyagerSD is a production-ready service discovery solution for Go microservices 
 - Connection pooling
 - Metrics and tracing
 - Kubernetes-ready design
+- Multi-platform support (Windows, Linux, macOS)
+- Automated release management
 
-## Features
+## 🚀 Features
 
 - **Automatic Service Registration**: Services register on startup
 - **Health Checks**: Periodic health verification
@@ -32,13 +37,17 @@ VoyagerSD is a production-ready service discovery solution for Go microservices 
 - **Metrics**: Prometheus metrics integration
 - **Production-Ready CLI**: Easy deployment with `voyagerd` command
 
-## Installation
+## 📦 Installation (Beta Version)
 
 ```bash
-go install github.com/kolkov/voyager/cmd/voyagerd@latest
+# Install beta version of discovery server
+go install github.com/kolkov/voyager/cmd/voyagerd@beta
+
+# Or via Docker (beta image)
+docker pull ghcr.io/kolkov/voyagerd:beta
 ```
 
-## Quick Start
+## ⚡ Quick Start
 
 ### 1. Start Discovery Server
 
@@ -92,19 +101,19 @@ func main() {
 
 ```go
 func callPaymentService(ctx context.Context, voyager *client.Client) error {
-conn, err := voyager.Discover(ctx, "payment-service")
-if err != nil {
-return err
-}
-defer conn.Close()
+    conn, err := voyager.Discover(ctx, "payment-service")
+    if err != nil {
+        return err
+    }
+    defer conn.Close()
 
-client := paymentv1.NewPaymentServiceClient(conn)
-_, err = client.ProcessPayment(ctx, &paymentv1.PaymentRequest{...})
-return err
+    client := paymentv1.NewPaymentServiceClient(conn)
+    _, err = client.ProcessPayment(ctx, &paymentv1.PaymentRequest{...})
+    return err
 }
 ```
 
-## Production Deployment
+## 🐳 Deployment (Beta)
 
 ### Docker
 
@@ -114,10 +123,10 @@ docker run -d \
   -p 2112:2112 \
   -e VOYAGER_ETCD_ENDPOINTS=http://etcd1:2379 \
   -e VOYAGER_AUTH_TOKEN=your-secure-token \
-  voyagerd:latest
+  ghcr.io/kolkov/voyagerd:beta
 ```
 
-### Kubernetes
+### Kubernetes (Beta)
 
 ```yaml
 apiVersion: apps/v1
@@ -130,7 +139,7 @@ spec:
     spec:
       containers:
         - name: discovery
-          image: registry.example.com/voyagerd:1.0.0
+          image: ghcr.io/kolkov/voyagerd:beta
           ports:
             - containerPort: 50050
               name: grpc
@@ -146,38 +155,40 @@ spec:
                   key: auth-token
 ```
 
-## Dependencies
+## 🔧 Development Workflow
 
-To build VoyagerSD from source, you'll need:
-
-- protoc v4.22.3
-- protoc-gen-go v1.28.1
-- protoc-gen-go-grpc v1.2.0
-
-These are required for generating gRPC code from protocol buffer definitions.
-
-## Build from Source
+### Before You Start
+1. Read the [Release Guide](RELEASE_GUIDE.md)
+2. Set up development environment:
 
 ```bash
-# Clone repository
-git clone https://github.com/kolkov/voyager.git
-cd voyager
+# Install tools
+make install-tools
 
-# Install required tools (see Dependencies section)
-go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
-
-# Build voyagerd server
-make build-voyagerd
-
-# Run server
-./bin/voyagerd --etcd-endpoints=http://localhost:2379
-
-# Build Docker image
-make docker-voyagerd
+# Generate code
+make generate
 ```
 
-## Configuration Options
+### Common Tasks
+
+```bash
+# Build binaries
+make build
+
+# Run tests
+make test
+
+# Lint code
+make lint
+
+# Run full service stack
+make run
+
+# Prepare release branch
+make release-prepare VERSION=v1.0.0-beta.X
+```
+
+## ⚙️ Configuration Options
 
 ### Server Configuration (voyagerd)
 
@@ -204,7 +215,7 @@ make docker-voyagerd
 | `WithRetryPolicy` | Retry policy (maxRetries, delay) | 5, 2s |
 | `WithAuthToken` | Authentication token | "" |
 
-## Monitoring
+## 📊 Monitoring
 
 VoyagerSD exposes Prometheus metrics:
 
@@ -212,7 +223,7 @@ VoyagerSD exposes Prometheus metrics:
 curl http://localhost:2112/metrics
 ```
 
-Available metrics:
+### Key Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
@@ -224,25 +235,24 @@ Available metrics:
 | `voyager_grpc_requests_total` | Counter | Total gRPC requests |
 | `voyager_grpc_response_time_seconds` | Histogram | gRPC response time |
 
-Health endpoints:
+### Health Endpoints
 - `http://localhost:2112/health` - Liveness probe
 - `http://localhost:2112/ready` - Readiness probe
 
-## Makefile Commands
+## 🛠️ Makefile Reference
 
 ```bash
-make build              # Build all binaries
-make build-voyagerd     # Build discovery server
-make test               # Run unit tests
-make lint               # Run linters
-make docker-voyagerd    # Build Docker image
-make run-voyagerd       # Run discovery server locally
-make run-full           # Run full stack (server + examples)
-make deploy-kubernetes  # Deploy to Kubernetes
-make clean              # Clean build artifacts
+make install-tools      # Install development dependencies
+make generate          # Generate protobuf code
+make build             # Build all binaries
+make test              # Run unit tests
+make lint              # Run linters
+make docker            # Build Docker images
+make run               # Run services locally
+make release-test      # Run release validation checks
 ```
 
-## Security Best Practices
+## 🔒 Security Best Practices
 
 1. **Always use TLS** for gRPC communications
 2. **Rotate authentication tokens** regularly
@@ -259,22 +269,22 @@ voyager, err := client.New("discovery:50050",
     client.WithAuthToken("secure-token"))
 ```
 
-## Getting Help
+## ❓ Getting Help
 
 For usage questions, bug reports, or feature requests:
 
 - [File a GitHub issue](https://github.com/kolkov/voyager/issues)
-- Join our [Discord community](https://discord.gg/your-invite-link)
+- Join our [Discord community](https://discord.gg/voyager-sd)
 
-## Contributing
+## 🤝 Contributing to Beta
 
-We welcome contributions! Please follow these steps:
+We especially welcome contributions during our beta phase! Please follow these steps:
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/your-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin feature/your-feature`)
-5. Submit a pull request
+5. Submit a pull request against the `beta` branch
 
 Before submitting, please ensure:
 - All tests pass
@@ -282,11 +292,11 @@ Before submitting, please ensure:
 - New features include tests
 - Documentation is updated
 
-## License
+## 📜 License
 
 Apache 2.0 - See [LICENSE](LICENSE) for details
 
 ---
 
-VoyagerSD is developed and maintained by the Kolkov team with ❤️.  
-Special thanks to all our contributors!
+VoyagerSD Beta is developed and maintained by the Kolkov team.  
+Help us improve by reporting issues and suggesting features!

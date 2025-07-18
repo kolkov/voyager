@@ -1,73 +1,93 @@
-version: 1
-
-before:
-  hooks:
-    - go mod tidy
-    - make generate
+project_name: voyager
 
 builds:
   - id: voyagerd
-    main: ./cmd/voyagerd
     binary: voyagerd
-    env:
-      - CGO_ENABLED=0
+    main: ./cmd/voyagerd
     goos:
       - linux
-      - windows
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X main.version={{.Version}}
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    env:
+      - CGO_ENABLED=0
+
+  - id: order-service
+    binary: order-service
+    main: ./examples/order-service
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+
+  - id: payment-service
+    binary: payment-service
+    main: ./examples/payment-service
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+
+  - id: discovery-server
+    binary: discovery-server
+    main: ./examples/discovery-server
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
 
 archives:
   - format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - deployments/kubernetes/*
+      - deployments/systemd/*
+
+dockers:
+  - image_templates:
+      - "ghcr.io/kolkov/voyagerd:{{ .Version }}"
+      - "ghcr.io/kolkov/voyagerd:latest"
+    dockerfile: cmd/voyagerd/Dockerfile
+    goos: linux
+    goarch: amd64
+    use: buildx
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.Commit}}
 
 checksum:
-  name_template: 'checksums.txt'
-
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
-
-changelog:
-  sort: asc
-  use: github
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^ci:'
-      - '^chore:'
-      - '^refactor:'
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\(.+\))??!?:.+$'
-      order: 0
-    - title: 'Bug fixes'
-      regexp: '^.*?fix(\(.+\))??!?:.+$'
-      order: 1
-    - title: Others
-      order: 999
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
 
 release:
   github:
     owner: kolkov
     name: voyager
-  draft: false
+  draft: true
   prerelease: auto
-  name_template: "{{.ProjectName}} {{.Version}}"
-  header: |
-    ## Voyager Service Discovery {{.Version}}
-    
-    Release notes for version {{.Version}}.

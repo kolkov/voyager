@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/phayes/freeport"
 	"go.etcd.io/etcd/server/v3/embed"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"net/url"
@@ -14,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 	"github.com/kolkov/voyager/server"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -53,25 +54,29 @@ func setupTestEnvironment(t *testing.T) (voyagerv1.DiscoveryClient, func()) {
 
 	// Start server in background
 	go func() {
-		if err := grpcSrv.Serve(lis); err != nil {
-			log.Printf("gRPC server exited: %v", err)
+		if srvErr := grpcSrv.Serve(lis); srvErr != nil {
+			log.Printf("gRPC server exited: %v", srvErr)
 		}
 	}()
 
 	// Create authenticated client
-	conn, err := grpc.DialContext(context.Background(), "bufnet",
+	conn, err := grpc.NewClient("bufnet",
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
 		}),
 		grpc.WithPerRPCCredentials(&authCreds{token: testToken}),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.NoError(t, err)
 
 	client := voyagerv1.NewDiscoveryClient(conn)
 
 	return client, func() {
-		conn.Close()
+		defer func() {
+			if conErr := conn.Close(); conErr != nil {
+				t.Logf("failed to close connection: %v", conErr)
+			}
+		}()
 		grpcSrv.Stop()
 		cleanupETCD()
 		srv.Close()
@@ -212,11 +217,19 @@ func setupEmbeddedETCD(t *testing.T) (string, func()) {
 		t.Logf("Embedded ETCD server ready at: %s", clientURL.String())
 		return clientURL.String(), func() {
 			etcd.Close()
-			os.RemoveAll(dir)
+			defer func() {
+				if err := os.RemoveAll(dir); err != nil {
+					t.Logf("failed to remove temp dir: %v", err)
+				}
+			}()
 		}
 	case <-time.After(15 * time.Second):
 		etcd.Close()
-		os.RemoveAll(dir)
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Logf("failed to remove temp dir: %v", err)
+			}
+		}()
 		t.Fatal("Timed out waiting for ETCD to start")
 		return "", func() {}
 	}

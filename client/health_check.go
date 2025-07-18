@@ -1,3 +1,4 @@
+// Package client implements load balancing strategies for service discovery
 package client
 
 import (
@@ -5,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // startHealthChecks initiates periodic health checks

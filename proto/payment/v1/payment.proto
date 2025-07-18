@@ -2,20 +2,43 @@ syntax = "proto3";
 
 package payment.v1;
 
-option go_package = "github.com/kolkov/voyager/proto/payment/v1;paymentv1";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/kolkov/voyager/gen/proto/payment/v1;paymentv1";
 
 service PaymentService {
+  // ProcessPayment обрабатывает новый платёж
   rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse) {}
+
+  // GetPaymentStatus возвращает статус существующего платежа
+  rpc GetPaymentStatus(PaymentStatusRequest) returns (PaymentStatusResponse) {}
 }
 
+// Запрос на обработку платежа
 message ProcessPaymentRequest {
-  string order_id = 1;
-  float amount = 2;
-  string currency = 3;
+  string order_id = 1;    // Идентификатор заказа
+  float amount = 2;       // Сумма платежа
+  string currency = 3;    // Валюта платежа (например, "USD", "EUR")
 }
 
+// Ответ на обработку платежа
 message ProcessPaymentResponse {
-  bool success = 1;
-  string transaction_id = 2;
-  string error_message = 3;
+  bool success = 1;             // Успешность операции
+  string transaction_id = 2;    // Идентификатор транзакции
+  string error_message = 3;     // Сообщение об ошибке (если success = false)
+}
+
+// Запрос статуса платежа
+message PaymentStatusRequest {
+  string transaction_id = 1;    // Идентификатор транзакции
+}
+
+// Ответ со статусом платежа
+message PaymentStatusResponse {
+  bool success = 1;                     // Успешность операции
+  float amount = 2;                     // Сумма платежа
+  string currency = 3;                  // Валюта платежа
+  string transaction_id = 4;            // Идентификатор транзакции
+  string status = 5;                    // Текущий статус ("pending", "completed", "failed")
+  google.protobuf.Timestamp timestamp = 6; // Время последнего обновления статуса
 }

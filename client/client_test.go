@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -154,13 +154,16 @@ func TestClient_Discover(t *testing.T) {
 			nil,
 		)
 
-		conn, err := grpc.DialContext(
-			context.Background(),
+		conn, err := grpc.NewClient(
 			"passthrough:///localhost:0",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		assert.NoError(t, err)
-		defer conn.Close()
+		defer func() {
+			if closeErr := conn.Close(); closeErr != nil {
+				t.Logf("failed to close connection: %v", closeErr)
+			}
+		}()
 
 		mockPool.On("Get", mock.Anything, "localhost:8080").Return(conn, nil)
 
@@ -375,7 +378,11 @@ func TestClient_ConnectionPool(t *testing.T) {
 	t.Run("Connection reuse and reference counting", func(t *testing.T) {
 		const bufSize = 1024 * 1024
 		lis := bufconn.Listen(bufSize)
-		defer lis.Close()
+		defer func() {
+			if err := lis.Close(); err != nil {
+				t.Logf("failed to close listener: %v", err)
+			}
+		}()
 
 		srv := grpc.NewServer()
 		go func() {
@@ -446,19 +453,25 @@ func TestClient_LoadBalancing(t *testing.T) {
 			nil,
 		).Times(3)
 
-		conn1, _ := grpc.DialContext(
-			context.Background(),
+		conn1, _ := grpc.NewClient(
 			"passthrough:///localhost:0",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
-		defer conn1.Close()
+		defer func() {
+			if err := conn1.Close(); err != nil {
+				t.Logf("failed to close conn1: %v", err)
+			}
+		}()
 
-		conn2, _ := grpc.DialContext(
-			context.Background(),
+		conn2, _ := grpc.NewClient(
 			"passthrough:///localhost:0",
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
-		defer conn2.Close()
+		defer func() {
+			if err := conn2.Close(); err != nil {
+				t.Logf("failed to close conn2: %v", err)
+			}
+		}()
 
 		// Expect round-robin order: host1 → host2 → host1
 		mockPool.On("Get", mock.Anything, "host1:8080").Return(conn1, nil).Once()

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package voyager.v1;
 
-option go_package = "github.com/kolkov/voyager/proto/voyager/v1;voyagerv1";
+option go_package = "github.com/kolkov/voyager/gen/voyager/v1;voyagerv1";
 
 service Discovery {
   rpc Register(Registration) returns (Response);

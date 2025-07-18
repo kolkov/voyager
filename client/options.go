@@ -1,3 +1,4 @@
+// Package client implements load balancing strategies for service discovery
 package client
 
 import (

@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // Client manages service registration, discovery, and connection pooling
@@ -32,7 +32,6 @@ type Client struct {
 	healthMutex       sync.Mutex
 	healthCheckCtx    context.Context
 	healthCheckCancel context.CancelFunc
-	mu                sync.RWMutex
 	balancer          LoadBalancer
 	address           string
 	port              int
@@ -211,16 +210,13 @@ func connectWithRetry(addr string, opts *Options) (*grpc.ClientConn, voyagerv1.D
 
 		dialOpts := []grpc.DialOption{
 			grpc.WithTransportCredentials(creds),
-			grpc.WithBlock(),
 		}
 
 		if opts.DialFunc != nil {
 			dialOpts = append(dialOpts, grpc.WithContextDialer(opts.DialFunc))
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), opts.ConnectionTimeout)
-		conn, err := grpc.DialContext(ctx, addr, dialOpts...)
-		cancel()
+		conn, err := grpc.NewClient(addr, dialOpts...)
 
 		if err == nil {
 			return conn, voyagerv1.NewDiscoveryClient(conn), nil

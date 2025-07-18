@@ -1,3 +1,4 @@
+// Package main implements a sample discovery server
 package main
 
 import (
@@ -62,8 +63,8 @@ func main() {
 	go func() {
 		http.Handle("/metrics", server.MetricsHandler())
 		log.Println("Metrics server running on :2112")
-		if err := http.ListenAndServe(":2112", nil); err != nil {
-			log.Printf("Metrics server error: %v", err)
+		if err2 := http.ListenAndServe(":2112", nil); err2 != nil {
+			log.Printf("Metrics server error: %v", err2)
 		}
 	}()
 
@@ -77,8 +78,8 @@ func main() {
 		}
 	}()
 
-	if err := grpcSrv.Serve(lis); err != nil {
-		log.Fatalf("gRPC server failed: %v", err)
+	if err2 := grpcSrv.Serve(lis); err2 != nil {
+		log.Fatalf("gRPC server failed: %v", err2)
 	}
 }
 
@@ -94,7 +95,11 @@ func isEtcdAvailable(endpoints []string) bool {
 	if err != nil {
 		return false
 	}
-	defer cli.Close()
+	defer func() {
+		if closeErr := cli.Close(); closeErr != nil {
+			log.Printf("failed to close client: %v", closeErr)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

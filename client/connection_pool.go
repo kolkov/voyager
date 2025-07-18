@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,7 +33,9 @@ type pooledConnection struct {
 
 func (pc *pooledConnection) Close() {
 	if atomic.AddInt64(&pc.refCount, -1) <= 0 {
-		pc.ClientConn.Close()
+		if err := pc.ClientConn.Close(); err != nil {
+			log.Printf("failed to close connection: %v", err)
+		}
 	}
 }
 
@@ -73,17 +76,13 @@ func (p *ConnectionPool) Get(ctx context.Context, address string) (*grpc.ClientC
 
 	dialOptions := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
-		grpc.WithBlock(),
 	}
 
 	if p.opts.DialFunc != nil {
 		dialOptions = append(dialOptions, grpc.WithContextDialer(p.opts.DialFunc))
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, p.opts.ConnectionTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, address, dialOptions...)
+	conn, err := grpc.NewClient(address, dialOptions...)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ voyager
 vendor/
 
 # Test artifacts
+.coverage/
 coverage.out
 *.test
 coverage.txt
@@ -67,3 +68,7 @@ docker-compose.override.yml
 
 # Development artifacts
 *.dev.yaml
+
+# Buf temporary files
+/buf.lock
+/buf-work

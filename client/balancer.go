@@ -1,3 +1,4 @@
+// Package client implements load balancing strategies for service discovery
 package client
 
 import (
@@ -6,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // LoadBalancer defines the interface for instance selection strategies
@@ -50,7 +51,7 @@ func newRandomBalancer() *randomBalancer {
 }
 
 // Select chooses a random instance
-func (b *randomBalancer) Select(serviceName string, instances []*voyagerv1.Registration) *voyagerv1.Registration {
+func (b *randomBalancer) Select(_ string, instances []*voyagerv1.Registration) *voyagerv1.Registration {
 	if len(instances) == 0 {
 		return nil
 	}
@@ -67,7 +68,7 @@ func newLeastConnectionsBalancer(pool *ConnectionPool) *leastConnectionsBalancer
 }
 
 // Select chooses the instance with the fewest active connections
-func (b *leastConnectionsBalancer) Select(serviceName string, instances []*voyagerv1.Registration) *voyagerv1.Registration {
+func (b *leastConnectionsBalancer) Select(_ string, instances []*voyagerv1.Registration) *voyagerv1.Registration {
 	if len(instances) == 0 {
 		return nil
 	}

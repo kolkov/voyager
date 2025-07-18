@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package order.v1;
 
-option go_package = "github.com/kolkov/voyager/proto/order/v1;orderv1";
+option go_package = "github.com/kolkov/voyager/gen/proto/order/v1;orderv1";
 
 service OrderService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {}

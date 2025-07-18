@@ -1,3 +1,4 @@
+// Package utils provides network-related utility functions
 package utils
 
 import (
@@ -39,7 +40,9 @@ func IsPortAvailable(port int) bool {
 	if err != nil {
 		return false
 	}
-	ln.Close()
+	if err2 := ln.Close(); err2 != nil {
+		return false
+	}
 	return true
 }
 

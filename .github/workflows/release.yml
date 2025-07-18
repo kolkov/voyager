@@ -1,7 +1,9 @@
 name: Release
+
 on:
   push:
-    tags: ["v*.*.*"]
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -10,42 +12,53 @@ permissions:
   attestations: write
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+      CGO_ENABLED: 0
+      GOPRIVATE: github.com/kolkov/voyager
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.24.x
+          go-version: '1.24'
+          cache: true
 
-      - name: Install protoc
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install tools
+        run: make install-tools
+
+      - name: Generate and verify code
         run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v22.3/protoc-22.3-linux-x86_64.zip
-          sudo unzip -o protoc-*.zip -d /usr/local
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
+          make generate
+          make verify-generated
 
-      - name: Generate code
-        run: make generate
+      - name: Run tests
+        run: make test
 
-      - name: Prepare dependencies
-        run: |
-          cp go.mod go.mod.orig
-          echo "replace github.com/kolkov/voyager => ./" >> go.mod
-          go mod tidy
-          mv go.mod.orig go.mod
-          go mod tidy
+      - name: Build binaries
+        run: make build
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser
-          version: '~> v1'
+          version: latest
           args: release --clean --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // Config defines server configuration options
@@ -76,7 +76,9 @@ func NewServer(cfg Config) (*Server, error) {
 				log.Printf("Warning: failed to load initial data: %v", err)
 				// Explicit fallback if initial load fails
 				srv.inMemory = true
-				cli.Close()
+				if cliErr := cli.Close(); cliErr != nil {
+					log.Printf("failed to close etcd client: %v", cliErr)
+				}
 			} else {
 				go srv.startCacheRefresher()
 			}
@@ -97,7 +99,9 @@ func (s *Server) Close() {
 	s.cancel()
 
 	if s.etcdClient != nil {
-		s.etcdClient.Close()
+		if err := s.etcdClient.Close(); err != nil {
+			log.Printf("failed to close etcd client: %v", err)
+		}
 	}
 }
 
@@ -115,7 +119,7 @@ func (s *Server) GRPCServer(opts ...grpc.ServerOption) *grpc.Server {
 }
 
 // AuthInterceptor provides authentication for gRPC methods
-func (s *Server) AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+func (s *Server) AuthInterceptor(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	if s.authToken != "" {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -187,7 +191,7 @@ func (s *Server) Register(ctx context.Context, req *voyagerv1.Registration) (*vo
 }
 
 // Discover returns service instances
-func (s *Server) Discover(ctx context.Context, req *voyagerv1.ServiceQuery) (*voyagerv1.ServiceList, error) {
+func (s *Server) Discover(_ context.Context, req *voyagerv1.ServiceQuery) (*voyagerv1.ServiceList, error) {
 	log.Printf("Discover request for service: %s", req.ServiceName)
 
 	discoveryStatus := "success"

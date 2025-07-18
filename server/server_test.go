@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // startEmbeddedETCD starts an embedded ETCD server for tests
@@ -58,11 +58,19 @@ func startEmbeddedETCD(t *testing.T) (string, func()) {
 		t.Logf("Embedded ETCD server ready at: %s", clientURL.String())
 		return clientURL.String(), func() {
 			etcd.Close()
-			os.RemoveAll(dir) // Clean up temp directory
+			defer func() {
+				if err := os.RemoveAll(dir); err != nil {
+					t.Logf("failed to remove temp dir: %v", err)
+				}
+			}() // Clean up temp directory
 		}
 	case <-time.After(15 * time.Second):
 		etcd.Close()
-		os.RemoveAll(dir)
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Logf("failed to remove temp dir: %v", err)
+			}
+		}()
 		t.Fatal("Timed out waiting for ETCD to start")
 		return "", nil
 	}
@@ -166,7 +174,7 @@ func TestAuthInterceptor(t *testing.T) {
 
 	t.Run("Valid token", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("authorization", "test-token"))
-		_, err := srv.AuthInterceptor(ctx, nil, nil, func(ctx context.Context, req interface{}) (interface{}, error) {
+		_, err := srv.AuthInterceptor(ctx, nil, nil, func(_ context.Context, req interface{}) (interface{}, error) {
 			return nil, nil
 		})
 		assert.NoError(t, err)
@@ -298,7 +306,11 @@ func TestEtcdAdapter(t *testing.T) {
 
 	adapter, err := NewEtcdAdapter([]string{endpoint})
 	require.NoError(t, err)
-	defer adapter.Close()
+	defer func() {
+		if err2 := adapter.Close(); err2 != nil {
+			t.Logf("failed to close etcd adapter: %v", err2)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

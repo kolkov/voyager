@@ -1,3 +1,4 @@
+// Package server implements service discovery logic
 package server
 
 import (
@@ -8,7 +9,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	voyagerv1 "github.com/kolkov/voyager/proto/voyager/v1"
+	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 )
 
 // refreshCache loads data from etcd into the in-memory cache
