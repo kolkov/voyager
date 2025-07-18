@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.0.0-beta.1] - 2025-07-17
+## [v1.0.0-beta.2] - 2025-07-17
 ### Added
 - Cross-platform bash scripts replacing PowerShell
 - Full release automation workflow with GoReleaser

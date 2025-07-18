@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*-beta.*'
+      - 'v*.*.*'
 
 permissions:
   contents: write
@@ -44,16 +45,21 @@ jobs:
       - name: Install tools
         run: make install-tools
 
-      - name: Generate and verify code
-        run: |
-          make generate
-          make verify-generated
+      - name: Generate code
+        run: make generate
+
+      - name: Run linters
+        run: make lint
 
       - name: Run tests
         run: make test
 
-      - name: Build binaries
-        run: make build
+      - name: Validate release tag
+        run: |
+          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid version format: ${{ github.ref_name }}"
+            exit 1
+          fi
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

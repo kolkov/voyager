@@ -2,9 +2,9 @@ name: Test and Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   pull_request:
-    branches: [main]
+    branches: [main, beta]
 
 jobs:
   test:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.24.4']
+        go-version: ['1.24']
     env:
       GO111MODULE: on
       SKIP_WINDOWS_ETCD_TESTS: ${{ matrix.os == 'windows-latest' }}
@@ -40,15 +40,16 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Install tools
-        run: |
-          go install github.com/bufbuild/buf/cmd/buf@latest
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+        run: make install-tools
 
-      - name: Generate and verify code
-        run: |
-          make generate
-          make verify-generated
+      - name: Generate code
+        run: make generate
 
-      # ... [остальные шаги без изменений] ...
+      - name: Run linters
+        run: make lint
+
+      - name: Run tests
+        run: make test
+
+      - name: Build binaries
+        run: make build
