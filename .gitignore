@@ -1,6 +1,6 @@
 # Binaries
 bin/
-voyager
+./voyagerd
 .bin/
 
 # Dependency directories
@@ -33,7 +33,6 @@ dist/
 *.local
 
 # Generated files
-*.pb.go
 *.swagger.json
 
 # Protoc downloads
@@ -62,6 +61,8 @@ Thumbs.db
 # Coverage reports
 *.coverprofile
 *.cover
+coverage.out
+*.out  # Добавлено
 
 # Docker compose override files
 docker-compose.override.yml

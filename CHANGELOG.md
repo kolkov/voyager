@@ -1,52 +1,115 @@
-# Changelog
+# Contributing to Voyager
 
-## [v1.0.0-beta.2] - 2025-07-17
-### Added
-- Cross-platform bash scripts replacing PowerShell
-- Full release automation workflow with GoReleaser
-- Developer guides in English and Russian (RELEASE_GUIDE.md, RELEASE_GUIDE.ru.md)
-- New Makefile commands for release management:
-    - `release-prepare`: Create release branch
-    - `release-publish`: Publish release to main
-    - `release-test`: Run release validation checks
-    - `release-guide`: Open release documentation
-- Multi-architecture Docker builds (linux/amd64, linux/arm64)
-- GitHub Actions workflow enhancements:
-    - Release validation step
-    - Automatic snapshot builds on PRs
-    - Improved caching strategy
+We welcome contributions from the community! Before you start, please read these guidelines.
 
-### Changed
-- Complete Makefile overhaul:
-    - Unified build process for all platforms
-    - Improved Windows/Linux/macOS compatibility
-    - Enhanced version information injection
-    - Better error handling and diagnostics
-- Linting configuration updated to latest standards
-- CI/CD pipeline optimizations (40% faster builds)
-- Documentation restructuring and improvements
-- Kubernetes deployment examples updated for beta images
+## Getting Started
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/your-username/voyager.git`
+3. Create a new feature branch: `git checkout -b feature/your-feature develop`
 
-### Fixed
-- All linter warnings and errors across codebase
-- Windows path handling issues in build scripts
-- ETCD connection stability in container environments
-- Service discovery cache refresh logic
-- Metrics collection for long-running instances
-- Connection pooling resource leaks
+## Development Environment Setup
+1. Run the setup script: `./dev-setup.sh`
+2. Install required tools: `make install-tools`
+3. Generate code: `make generate`
+4. Build binaries: `make build`
 
-### Security
-- Updated all dependencies to address known vulnerabilities
-- Improved token handling in client-server communication
-- Added security best practices section to documentation
+## Code Style
+- Follow Go standard formatting (`gofmt`)
+- Use descriptive variable and function names
+- Comment public functions and types
+- Keep functions focused and concise
+- Write comprehensive tests for new functionality
 
-## [v1.0.0-beta] - 2025-07-01
-### Added
-- Initial release of Voyager Service Discovery
-- ETCD backend support
-- In-memory mode for development
-- Prometheus metrics integration
-- Production-ready CLI (voyagerd)
-- Basic Kubernetes deployment examples
-- RoundRobin, Random and LeastConnections load balancing strategies
-- Health check system with TTL support
+## Development Process
+1. Work on your feature branch
+2. Commit changes regularly with meaningful messages:
+   ```bash
+   git add .
+   git commit -m "feat: add new functionality"
+   ```
+3. Keep your branch updated with the latest changes from `develop`:
+   ```bash
+   git pull origin develop
+   ```
+
+## Testing Requirements
+- Write unit tests for all new code
+- Include integration tests for complex features
+- Ensure all tests pass: `make test`
+- Maintain test coverage above 85%
+- Run tests locally before submitting PR:
+  ```bash
+  make test-unit       # Unit tests
+  make test-integration # Integration tests (non-Windows)
+  ```
+
+## Submitting a Pull Request
+1. Ensure your code passes all checks:
+   ```bash
+   make lint
+   make test
+   ```
+2. Update documentation:
+  - Add relevant sections to README.md
+  - Update examples if needed
+  - Add new configuration options to documentation
+3. Describe your changes in CHANGELOG.md under `## [Unreleased]` section
+4. Push your branch:
+   ```bash
+   git push origin feature/your-feature
+   ```
+5. Open a pull request against the `develop` branch
+6. In your PR description:
+  - Explain the purpose of the changes
+  - Document any breaking changes
+  - Reference related issues
+
+## Beta Phase Contributions
+During our beta phase, we especially welcome:
+- Bug reports with reproduction steps
+- Performance improvements
+- Additional test coverage
+- Documentation enhancements
+- Compatibility fixes for different environments
+
+## Reporting Issues
+Please include:
+- Voyager version (`voyagerd --version`)
+- Operating system and architecture
+- Steps to reproduce
+- Expected behavior
+- Actual behavior
+- Relevant log output
+- Environment details (ETCD version, etc.)
+
+## Code Review Process
+- All PRs require at least one approval from core maintainers
+- PRs must pass CI checks (linting, tests, build)
+- Maintainers may request changes before merging
+- Discussion is encouraged - feel free to ask questions!
+
+## Release Process
+- Follow our [Release Guide](RELEASE_GUIDE.md) for detailed instructions
+- All releases go through release branches
+- Versioning follows Semantic Versioning (SemVer)
+
+## Makefile Reference
+```bash
+make install-tools    # Install development tools
+make generate        # Generate protobuf code
+make build           # Build all binaries
+make test            # Run unit tests
+make test-integration# Run integration tests
+make lint            # Run linters
+make docker          # Build Docker images
+make run             # Run services locally
+make release-test    # Run release validation checks
+```
+
+## Getting Help
+- Join our [Discord community](https://discord.gg/voyager-sd)
+- File GitHub issues for bugs or feature requests
+- Check documentation in `/docs` folder
+
+## License
+By contributing to Voyager, you agree that your contributions will be licensed under the [Apache 2.0 License](LICENSE).

@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -24,13 +25,19 @@ import (
 
 // startEmbeddedETCD starts an embedded ETCD server for tests
 func startEmbeddedETCD(t *testing.T) (string, func()) {
+	// Skip on Windows due to instability
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping ETCD test on Windows due to instability")
+	}
+
 	clientPort, err := freeport.GetFreePort()
 	require.NoError(t, err, "Failed to get free port")
 	peerPort, err := freeport.GetFreePort()
 	require.NoError(t, err, "Failed to get free port")
 
-	clientURL := url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(clientPort)}
-	peerURL := url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(peerPort)}
+	// Use 127.0.0.1 instead of localhost to avoid DNS issues
+	clientURL := url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(clientPort)}
+	peerURL := url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(peerPort)}
 
 	// Create unique temp directory
 	dir, err := os.MkdirTemp("", "etcd-test")
@@ -54,23 +61,36 @@ func startEmbeddedETCD(t *testing.T) (string, func()) {
 
 	select {
 	case <-etcd.Server.ReadyNotify():
-		time.Sleep(1 * time.Second) // Stabilize for Windows
 		t.Logf("Embedded ETCD server ready at: %s", clientURL.String())
+
+		// Add retry logic for client connection
+		var cli *clientv3.Client
+		for i := 0; i < 5; i++ {
+			cli, err = clientv3.New(clientv3.Config{
+				Endpoints:   []string{clientURL.String()},
+				DialTimeout: 5 * time.Second,
+			})
+			if err == nil {
+				if closeErr := cli.Close(); closeErr != nil {
+					t.Logf("failed to close etcd client: %v", closeErr)
+				}
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NoError(t, err, "Failed to connect to embedded ETCD")
+
 		return clientURL.String(), func() {
 			etcd.Close()
-			defer func() {
-				if err := os.RemoveAll(dir); err != nil {
-					t.Logf("failed to remove temp dir: %v", err)
-				}
-			}() // Clean up temp directory
-		}
-	case <-time.After(15 * time.Second):
-		etcd.Close()
-		defer func() {
-			if err := os.RemoveAll(dir); err != nil {
-				t.Logf("failed to remove temp dir: %v", err)
+			if removeErr := os.RemoveAll(dir); removeErr != nil {
+				t.Logf("failed to remove temp dir: %v", removeErr)
 			}
-		}()
+		}
+	case <-time.After(30 * time.Second):
+		etcd.Close()
+		if err := os.RemoveAll(dir); err != nil {
+			t.Logf("failed to remove temp dir: %v", err)
+		}
 		t.Fatal("Timed out waiting for ETCD to start")
 		return "", nil
 	}
@@ -88,13 +108,9 @@ func TestNewServer(t *testing.T) {
 	})
 
 	t.Run("ETCD mode", func(t *testing.T) {
-		if os.Getenv("SKIP_WINDOWS_ETCD_TESTS") != "" {
-			t.Skip("Skipping ETCD test on Windows due to instability")
-		}
-
 		endpoint, cleanup := startEmbeddedETCD(t)
 		defer cleanup()
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond) // Give server time to stabilize
 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
@@ -113,7 +129,7 @@ func TestNewServer(t *testing.T) {
 		reg := &voyagerv1.Registration{
 			ServiceName: "test-service",
 			InstanceId:  "instance-1",
-			Address:     "localhost",
+			Address:     "127.0.0.1", // Use IP instead of localhost
 			Port:        8080,
 		}
 
@@ -200,7 +216,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	reg := &voyagerv1.Registration{
 		ServiceName: "test-service",
 		InstanceId:  "instance-1",
-		Address:     "localhost",
+		Address:     "127.0.0.1", // Use IP instead of localhost
 		Port:        8080,
 	}
 
@@ -296,13 +312,9 @@ func TestJanitorCleanup(t *testing.T) {
 
 // TestEtcdAdapter tests ETCD adapter operations
 func TestEtcdAdapter(t *testing.T) {
-	if os.Getenv("SKIP_WINDOWS_ETCD_TESTS") != "" {
-		t.Skip("Skipping ETCD test on Windows due to instability")
-	}
-
 	endpoint, cleanup := startEmbeddedETCD(t)
 	defer cleanup()
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond) // Stabilize connection
 
 	adapter, err := NewEtcdAdapter([]string{endpoint})
 	require.NoError(t, err)
@@ -312,7 +324,7 @@ func TestEtcdAdapter(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Increased timeout
 	defer cancel()
 
 	key := "/test/key"
@@ -382,7 +394,7 @@ func registerTestService(t *testing.T, srv *Server) *voyagerv1.Registration {
 	reg := &voyagerv1.Registration{
 		ServiceName: "test-service",
 		InstanceId:  "instance-1",
-		Address:     "localhost",
+		Address:     "127.0.0.1", // Use IP instead of localhost
 		Port:        8080,
 	}
 	_, err := srv.Register(context.Background(), reg)

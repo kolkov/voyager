@@ -11,6 +11,7 @@
 8. [Makefile Commands](#-makefile-commands)
 9. [Common Mistakes](#-common-mistakes)
 10. [Responsibilities](#-responsibilities)
+11. [Future Considerations](#-future-considerations)
 
 ## 🌿 Branching Model
 ```mermaid
@@ -224,6 +225,26 @@ make goreleaser-release
    - Follow branching model
    - Keep CHANGELOG.md updated
    - Conduct peer code reviews
+
+## 🔮 Future Considerations
+
+### macOS Compatibility Update
+GitHub Actions will migrate the `macos-latest` label to macOS 15 on August 4, 2025.
+
+To prepare:
+1. Test VoyagerSD on macOS 15 beta when available
+2. Verify compatibility with new OS features
+3. Update dependencies if needed
+4. Consider pinning to `macos-14` for critical production pipelines
+
+For more information:
+https://github.com/actions/runner-images/issues/12520
+
+### Ongoing Maintenance
+- Regularly update dependencies (`make tidy`)
+- Monitor GitHub Actions announcements
+- Test on new OS versions proactively
+- Update this guide as processes evolve
 
 ---
 

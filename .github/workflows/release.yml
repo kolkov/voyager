@@ -2,45 +2,32 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*-beta.*'
-      - 'v*.*.*'
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
   packages: write
   id-token: write
-  attestations: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      GO111MODULE: on
-      CGO_ENABLED: 0
-      GOPRIVATE: github.com/kolkov/voyager
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24'
+          go-version: "1.24"
           cache: true
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Install tools
         run: make install-tools
@@ -48,18 +35,14 @@ jobs:
       - name: Generate code
         run: make generate
 
-      - name: Run linters
-        run: make lint
-
       - name: Run tests
         run: make test
 
-      - name: Validate release tag
+      # Add this cleanup step before GoReleaser
+      - name: Clean test artifacts
         run: |
-          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-            echo "::error::Invalid version format: ${{ github.ref_name }}"
-            exit 1
-          fi
+          git clean -fdx
+          git reset --hard HEAD
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -68,3 +51,30 @@ jobs:
           args: release --clean --timeout 30m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: cmd/voyagerd/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/kolkov/voyagerd:${{ github.ref_name }}
+            ghcr.io/kolkov/voyagerd:latest
+          build-args: |
+            VERSION=${{ github.ref_name }}

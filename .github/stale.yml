@@ -1,0 +1,7 @@
+daysUntilStale: 60
+daysUntilClose: 14
+exemptLabels: [pinned, security]
+staleLabel: stale
+markComment: >
+  This issue hasn't been updated in 60 days. It will be closed in 14 days
+  if no activity occurs. Please update or it will be closed.

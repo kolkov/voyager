@@ -1,89 +1,32 @@
+version: 2
+
 project_name: voyager
 
 builds:
   - id: voyagerd
     binary: voyagerd
     main: ./cmd/voyagerd
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
-    env:
-      - CGO_ENABLED=0
-
-  - id: order-service
-    binary: order-service
-    main: ./examples/order-service
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    env:
-      - CGO_ENABLED=0
-
-  - id: payment-service
-    binary: payment-service
-    main: ./examples/payment-service
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    env:
-      - CGO_ENABLED=0
-
-  - id: discovery-server
-    binary: discovery-server
-    main: ./examples/discovery-server
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    env:
-      - CGO_ENABLED=0
+    env: [CGO_ENABLED=0]
 
 archives:
   - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "voyager_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
       - CHANGELOG.md
-      - deployments/kubernetes/*
-      - deployments/systemd/*
-
-dockers:
-  - image_templates:
-      - "ghcr.io/kolkov/voyagerd:{{ .Version }}"
-      - "ghcr.io/kolkov/voyagerd:latest"
-    dockerfile: cmd/voyagerd/Dockerfile
-    goos: linux
-    goarch: amd64
-    use: buildx
-    build_flag_templates:
-      - --platform=linux/amd64
-      - --label=org.opencontainers.image.version={{.Version}}
-      - --label=org.opencontainers.image.created={{.Date}}
-      - --label=org.opencontainers.image.revision={{.Commit}}
+      - deployments/kubernetes/*.yaml
+      - deployments/systemd/*.service
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "voyager_{{ .Version }}_checksums.txt"
 
 release:
   github:

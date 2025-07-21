@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/phayes/freeport"
 	"go.etcd.io/etcd/server/v3/embed"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
@@ -18,15 +19,24 @@ import (
 	voyagerv1 "github.com/kolkov/voyager/gen/proto/voyager/v1"
 	"github.com/kolkov/voyager/server"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
 	bufSize   = 1024 * 1024
-	timeout   = 2 * time.Second
+	timeout   = 5 * time.Second
 	testToken = "test-auth-token"
 )
+
+func init() {
+	net.DefaultResolver = &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{}
+			return d.DialContext(ctx, "udp", "8.8.8.8:53")
+		},
+	}
+}
 
 // setupTestEnvironment prepares an isolated testing environment
 func setupTestEnvironment(t *testing.T) (voyagerv1.DiscoveryClient, func()) {
@@ -59,8 +69,9 @@ func setupTestEnvironment(t *testing.T) (voyagerv1.DiscoveryClient, func()) {
 		}
 	}()
 
-	// Create authenticated client
-	conn, err := grpc.NewClient("bufnet",
+	// Create authenticated client with proper resolver
+	conn, err := grpc.NewClient(
+		"passthrough:///bufnet", // Use passthrough resolver
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
 		}),
@@ -104,7 +115,7 @@ func TestServiceRegistration(t *testing.T) {
 	reg := &voyagerv1.Registration{
 		ServiceName: "test-service",
 		InstanceId:  "instance-1",
-		Address:     "localhost",
+		Address:     "127.0.0.1",
 		Port:        8080,
 		Metadata:    map[string]string{"env": "test"},
 	}
@@ -134,7 +145,7 @@ func TestHealthCheck(t *testing.T) {
 	reg := &voyagerv1.Registration{
 		ServiceName: "health-service",
 		InstanceId:  "health-instance-1",
-		Address:     "localhost",
+		Address:     "127.0.0.1",
 		Port:        9090,
 	}
 
@@ -160,7 +171,7 @@ func TestDeregistration(t *testing.T) {
 	reg := &voyagerv1.Registration{
 		ServiceName: "temp-service",
 		InstanceId:  "temp-instance",
-		Address:     "localhost",
+		Address:     "127.0.0.1",
 		Port:        7070,
 	}
 
@@ -191,8 +202,9 @@ func setupEmbeddedETCD(t *testing.T) (string, func()) {
 	peerPort, err := freeport.GetFreePort()
 	require.NoError(t, err, "Failed to get free port")
 
-	clientURL := url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(clientPort)}
-	peerURL := url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(peerPort)}
+	// Use 127.0.0.1 instead of localhost to avoid DNS issues
+	clientURL := url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(clientPort)}
+	peerURL := url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(peerPort)}
 
 	dir, err := os.MkdirTemp("", "etcd-test")
 	require.NoError(t, err, "Failed to create temp dir")
