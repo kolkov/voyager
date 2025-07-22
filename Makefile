@@ -4,7 +4,7 @@ BIN_DIR := bin
 VERSION := $(shell git describe --tags --always 2>/dev/null | sed 's/-beta-/-beta./' | sed 's/-g[0-9a-f]\+$$//' || echo "v0.0.0-dev")
 COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-DOCKER_TAG ?= latest
+DOCKER_TAG ?= $(VERSION)
 GOOS ?= $(shell $(GO) env GOOS)
 GOARCH ?= $(shell $(GO) env GOARCH)
 
@@ -33,9 +33,13 @@ MKDIR := mkdir -p
 RM := rm -rf
 CP := cp
 
-.PHONY: all tidy generate test test-unit test-integration build docker clean lint cover install-tools help version release release-test release-prepare release-publish release-abort goreleaser goreleaser-release release-guide
+# Test coverage files
+COV_UNIT := unit-coverage.out
+COV_INTEGRATION := integration-coverage.out
 
-all: lint test build
+.PHONY: all tidy generate test test-unit test-integration build docker clean lint cover install-tools help version release release-test release-prepare release-publish release-abort goreleaser goreleaser-release release-guide security
+
+all: lint security test build
 
 ## version: Show version information
 version:
@@ -52,6 +56,7 @@ install-tools:
 	@$(GO) install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 	@$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	@$(GO) install github.com/goreleaser/goreleaser@latest
+	@$(GO) install golang.org/x/vuln/cmd/govulncheck@latest
 	@echo "OK Tools installed successfully"
 
 ## tidy: Tidying Go modules
@@ -72,14 +77,14 @@ test: test-unit test-integration
 ## test-unit: Run unit tests only
 test-unit:
 	@echo "[TEST] Running unit tests..."
-	@$(GO) test -v -coverprofile=unit-coverage.out ./client ./server
+	@$(GO) test -v -coverprofile=$(COV_UNIT) -covermode=atomic ./client ./server
 	@echo "OK Unit tests completed"
 
 ## test-integration: Run integration tests only
 test-integration:
 	@echo "[TEST] Running integration tests..."
 	@if [ "$(GOOS)" != "windows" ]; then \
-		$(GO) test -v -coverprofile=integration-coverage.out -tags=integration ./test/integration; \
+		$(GO) test -v -coverprofile=$(COV_INTEGRATION) -covermode=atomic -tags=integration ./test/integration; \
 	else \
 		echo "Skipping integration tests on Windows"; \
 	fi
@@ -101,7 +106,13 @@ lint: generate
 
 ## cover: Open coverage report
 cover:
-	@$(GO) tool cover -html=coverage.out
+	@$(GO) tool cover -html=$(COV_UNIT)
+
+## security: Check for vulnerabilities
+security:
+	@echo "[SECURITY] Scanning for vulnerabilities..."
+	@govulncheck ./...
+	@echo "✅ No vulnerabilities found"
 
 ## build: Build all binaries
 build:
@@ -116,7 +127,7 @@ build:
 ## docker: Build Docker image
 docker:
 	@echo "[DOCKER] Building Docker image..."
-	@docker build -t voyagerd:$(VERSION) -f cmd/voyagerd/Dockerfile .
+	@docker build -t voyagerd:$(DOCKER_TAG) -f cmd/voyagerd/Dockerfile .
 	@echo "OK Docker image built"
 
 ## run: Run service locally
@@ -129,7 +140,9 @@ run: build
 		--debug
 
 ## release-test: Run all tests required for release
-release-test: lint test-unit
+release-test: lint security
+	@echo "[TEST] Running release tests (without coverage)..."
+	@$(GO) test ./... > /dev/null 2>&1 || $(GO) test ./...
 	@echo "OK Release validation passed"
 
 ## release-prepare: Prepare release branch
@@ -176,3 +189,4 @@ help:
 	@echo "  make test-unit         # Run unit tests only"
 	@echo "  make test-integration  # Run integration tests (non-Windows)"
 	@echo "  make run               # Start service locally"
+	@echo "  make security          # Check for vulnerabilities"
