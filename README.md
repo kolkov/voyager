@@ -4,13 +4,13 @@
 [![CI Status](https://github.com/kolkov/voyager/actions/workflows/test.yml/badge.svg)](https://github.com/kolkov/voyager/actions)
 [![Coverage Status](https://coveralls.io/repos/github/kolkov/voyager/badge.svg)](https://coveralls.io/github/kolkov/voyager)
 [![GitHub release](https://img.shields.io/github/release/kolkov/voyager.svg)](https://github.com/kolkov/voyager/releases)
-[![Beta Release](https://img.shields.io/badge/release-v1.0.0--beta.3-blue)](https://github.com/kolkov/voyager/releases/tag/v1.0.0-beta.3)
+[![Beta Release](https://img.shields.io/badge/release-v1.0.0--beta.6-blue)](https://github.com/kolkov/voyager/releases/tag/v1.0.0-beta.6)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kolkov/voyager)](https://goreportcard.com/report/github.com/kolkov/voyager)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/kolkov/voyager/blob/main/LICENSE)
 [![Multi-Platform](https://img.shields.io/badge/platform-windows%20|%20linux%20|%20macos-lightgrey)](https://github.com/kolkov/voyager)
 [![Multi-Arch](https://img.shields.io/badge/arch-amd64%20|%20arm64%20|%20armv7-blue)](https://github.com/kolkov/voyager)
 
-> **Latest Beta: VoyagerSD 1.0.0-beta.3** - Our most advanced pre-release version with full CI/CD automation, multi-arch support, and enhanced security. We're actively refining before the stable release.
+> **Latest Beta: VoyagerSD 1.0.0-beta.6** - Our most advanced pre-release version with full CI/CD automation, multi-arch support, and enhanced security. We've resolved all dependency issues and are ready for production testing.
 
 VoyagerSD is a production-ready service discovery solution for Go microservices with:
 
@@ -41,10 +41,10 @@ VoyagerSD is a production-ready service discovery solution for Go microservices 
 
 ```bash
 # Install beta version of discovery server
-go install github.com/kolkov/voyager/cmd/voyagerd@beta
+go install github.com/kolkov/voyager/cmd/voyagerd@v1.0.0-beta.6
 
 # Or via Docker (multi-arch image)
-docker pull ghcr.io/kolkov/voyagerd:beta
+docker pull ghcr.io/kolkov/voyagerd:v1.0.0-beta.6
 ```
 
 ## ⚡ Quick Start
@@ -88,6 +88,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	port := listener.Addr().(*net.TCPAddr).Port
 	
 	// Register service with metadata
 	err = voyager.Register("order-service", "localhost", port, map[string]string{
@@ -136,7 +137,7 @@ func callPaymentService(ctx context.Context, voyager *client.Client) error {
 version: '3.8'
 services:
   voyagerd:
-    image: ghcr.io/kolkov/voyagerd:beta
+    image: ghcr.io/kolkov/voyagerd:v1.0.0-beta.6
     ports:
       - "50050:50050"
       - "2112:2112"
@@ -174,7 +175,7 @@ spec:
     spec:
       containers:
         - name: discovery
-          image: ghcr.io/kolkov/voyagerd:beta
+          image: ghcr.io/kolkov/voyagerd:v1.0.0-beta.6
           ports:
             - containerPort: 50050
               name: grpc
@@ -238,13 +239,13 @@ docker-compose up -d
 ### Release Management
 ```bash
 # Prepare release branch
-make release-prepare VERSION=v1.0.0-beta.4
+make release-prepare VERSION=v1.0.0-beta.6
 
 # Run release validation
 make release-test
 
 # Publish release (CI automated)
-make release-publish VERSION=v1.0.0-beta.4
+make release-publish VERSION=v1.0.0-beta.6
 ```
 
 ## 📊 Monitoring & Metrics
@@ -296,6 +297,7 @@ make release-guide      # Open release documentation
 3. **Limit network exposure** with firewalls
 4. **Run as non-root** in containers
 5. **Enable audit logging** for sensitive operations
+6. **Verify dependencies** with govulncheck
 
 ```go
 // Secure client with TLS
@@ -309,6 +311,15 @@ voyager, err := client.New("discovery:50050",
     }),
     client.WithAuthToken("rotated-quarterly-token"))
 ```
+
+## 🆕 What's New in Beta.6
+
+- Resolved all dependency checksum issues
+- Enhanced security scanning in CI pipeline
+- Improved Windows compatibility
+- Optimized Docker builds
+- Fixed coverage reporting
+- Retracted problematic v1.0.0-beta.5 version
 
 ## ❓ Getting Help
 

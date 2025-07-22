@@ -1,6 +1,35 @@
 # Changelog
 
-## [v1.0.0-beta.5] - 2025-07-22
+## [v1.0.0-beta.6] - 2025-07-23 (Upcoming Release)
+### Added
+- Automatic retracted dependency detection in workflows
+- Enhanced security scanning with govulncheck
+- Commit history squash process for cleaner releases
+- Improved Windows compatibility in CI pipelines
+- Dependency verification step in CI workflows
+
+### Changed
+- Updated release guide with best practices for commit history
+- Optimized Docker build process for smaller image sizes
+- Upgraded GitHub Actions to latest versions
+- Improved dependency management workflow
+- Retracted v1.0.0-beta.5 due to checksum mismatch issues
+
+### Fixed
+- Resolved checksum verification issues for Go modules
+- Fixed artifact path configuration in CI workflows
+- Addressed minor logging inconsistencies
+- Improved error handling in client registration
+- Resolved Windows Bash script execution in CI/CD pipelines
+- Fixed ETCD container startup sequence for integration tests
+
+### Security
+- Pinned gRPC to stable v1.73.0 (CVE-2025-XXXXX mitigation)
+- Added govulncheck security scanning to CI pipeline
+- Implemented automatic dependency vulnerability checks
+- Enhanced token rotation recommendations in documentation
+
+## [v1.0.0-beta.5] - 2025-07-22 [RETRACTED]
 ### Fixed
 - Resolved Windows Bash script execution in CI/CD pipelines
 - Fixed ETCD container startup sequence for integration tests

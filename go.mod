@@ -87,4 +87,5 @@ require (
 
 retract (
     v1.0.0-beta.3 // Contains retracted grpc dependency
+    v1.0.0-beta.5 // Checksum mismatch issue
 )
