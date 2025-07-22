@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/client/v3 v3.6.2
 	go.etcd.io/etcd/server/v3 v3.6.2
-	google.golang.org/grpc v1.74.0
+	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -83,4 +83,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+retract (
+    v1.0.0-beta.3 // Contains retracted grpc dependency
 )

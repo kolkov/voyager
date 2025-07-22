@@ -9,6 +9,7 @@ vendor/
 # Test artifacts
 .coverage/
 coverage.out
+unit-coverage.out
 *.test
 coverage.txt
 coverage-unit.txt
