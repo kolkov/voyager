@@ -9,8 +9,8 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/etcd/client/v3 v3.6.2
-	go.etcd.io/etcd/server/v3 v3.6.2
+	go.etcd.io/etcd/client/v3 v3.6.3
+	go.etcd.io/etcd/server/v3 v3.6.3
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
@@ -57,9 +57,9 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.4.2 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.2 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.2 // indirect
-	go.etcd.io/etcd/pkg/v3 v3.6.2 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.3 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.3 // indirect
+	go.etcd.io/etcd/pkg/v3 v3.6.3 // indirect
 	go.etcd.io/raft/v3 v3.6.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.59.0 // indirect
@@ -86,6 +86,6 @@ require (
 )
 
 retract (
-    v1.0.0-beta.3 // Contains retracted grpc dependency
-    v1.0.0-beta.5 // Checksum mismatch issue
+	v1.0.0-beta.5 // Checksum mismatch issue
+	v1.0.0-beta.3 // Contains retracted grpc dependency
 )
