@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/client/v3 v3.6.2
 	go.etcd.io/etcd/server/v3 v3.6.2
-	google.golang.org/grpc v1.73.0
+	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -86,6 +86,6 @@ require (
 )
 
 retract (
-    v1.0.0-beta.3 // Contains retracted grpc dependency
-    v1.0.0-beta.5 // Checksum mismatch issue
+	v1.0.0-beta.5 // Checksum mismatch issue
+	v1.0.0-beta.3 // Contains retracted grpc dependency
 )
